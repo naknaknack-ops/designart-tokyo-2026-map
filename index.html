@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DESIGNART MAP">
+<title>DESIGNART TOKYO 2026 会場マップ</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+body{margin:0}[hidden]{display:none!important}img{max-width:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* Layout: one-screen map app — map fills the screen, a list/detail sheet docks at the bottom on phones and on the left on wide screens. */
+:root{
+  --bg:#f3f3ef; --surface:#ffffff; --ink:#16171a; --muted:#666a70; --line:#dcdcd5; --chip:#ebebe5;
+  --accent:#1d3bd6; --kk:#16171a;
+  --a-ginza:#d23c2a; --a-tokyo:#c47a00; --a-roppongi:#7a3ec2; --a-gaienmae:#0f8a6a; --a-omotesando:#1d3bd6; --a-harajuku:#d1408a; --a-daikanyama:#2f8fb8; --a-ikejiri:#6b7d12;
+  --f-display:"Familjen Grotesk","Zen Kaku Gothic New",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --tile-filter:none;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121315; --surface:#1b1c1f; --ink:#ececea; --muted:#9a9ea5; --line:#2e3034; --chip:#26282c;
+  --accent:#7d93ff; --kk:#f3f3ef;
+  --a-ginza:#ff6b57; --a-tokyo:#f0a63a; --a-roppongi:#b588f0; --a-gaienmae:#3cc79f; --a-omotesando:#7d93ff; --a-harajuku:#f57ab6; --a-daikanyama:#5dbde3; --a-ikejiri:#a8c04a;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.9) saturate(.6);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121315; --surface:#1b1c1f; --ink:#ececea; --muted:#9a9ea5; --line:#2e3034; --chip:#26282c;
+  --accent:#7d93ff; --kk:#f3f3ef;
+  --a-ginza:#ff6b57; --a-tokyo:#f0a63a; --a-roppongi:#b588f0; --a-gaienmae:#3cc79f; --a-omotesando:#7d93ff; --a-harajuku:#f57ab6; --a-daikanyama:#5dbde3; --a-ikejiri:#a8c04a;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.9) saturate(.6);
+  color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;overflow:hidden}
+*{box-sizing:border-box}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+#app{height:100%;display:grid;grid-template-rows:auto 1fr;}
+header{position:relative;background:var(--surface);border-bottom:1px solid var(--line);z-index:800;min-width:0}
+.bar{display:flex;align-items:center;gap:10px;min-height:46px;padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.bar h1{flex:1 1 auto;min-width:0;font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.01em;margin:0;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar h1 span{color:var(--muted);font-weight:500}
+.dates,.dates-m{margin:0;color:var(--muted);font-family:var(--f-mono);font-size:11.5px;letter-spacing:.02em}
+.bar .dates{display:none}
+.ftoggle{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--bg);cursor:pointer;font-size:12.5px;font-weight:500}
+.ftoggle[aria-expanded="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.ftoggle b[hidden]{display:none}
+.ftoggle b{font-family:var(--f-mono);font-size:10.5px;font-weight:500;min-width:17px;height:17px;border-radius:9px;background:var(--accent);color:#fff;display:inline-grid;place-items:center;padding:0 4px}
+.filters{display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 10px 24px rgba(0,0,0,.14);padding-block:4px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));flex-direction:column;gap:10px}
+header.open .filters{display:flex}
+.fdone{display:flex;justify-content:space-between;gap:8px}
+.fdone button{height:34px;border-radius:8px;padding:0 14px;cursor:pointer;font-size:13px}
+.reset{border:1px solid var(--line);background:var(--surface)}
+.done{border:1px solid var(--ink);background:var(--ink);color:var(--surface);font-weight:500;flex:1 1 auto}
+.controls{display:flex;gap:8px;align-items:center;min-width:0;flex-wrap:wrap}
+.controls select{flex:1 1 0}
+.controls input[type=search]{flex:1 1 100%;min-width:0;height:34px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:0 10px}
+.controls select{height:34px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:0 6px;min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);border-radius:999px;height:28px;padding:0 11px 0 9px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--ink))}
+.chip b{font-family:var(--f-mono);font-weight:500;font-size:11px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip[aria-pressed="true"] b{color:inherit;opacity:.7}
+
+main{position:relative;min-height:0;display:grid}
+#map{position:absolute;inset:0;background:var(--bg);z-index:0}
+.leaflet-tile-pane{filter:var(--tile-filter)}
+.leaflet-container{font-family:var(--f-body);background:var(--bg)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--surface) 85%,transparent)!important;color:var(--muted)!important;font-size:10px}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.leaflet-bar a{background:var(--surface)!important;color:var(--ink)!important;border-color:var(--line)!important}
+.leaflet-control-zoom{margin-top:calc(10px + env(safe-area-inset-top,0px))!important;margin-right:calc(10px + env(safe-area-inset-right,0px))!important}
+
+.pin{width:var(--s,26px);height:var(--s,26px);border-radius:50%;background:var(--c);color:#fff;border:2px solid var(--surface);display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .15s}
+.pin.sel{transform:scale(1.35);outline:2px solid var(--ink);outline-offset:1px}
+.pin.dim{opacity:.18;filter:grayscale(1)}
+.kkpin{background:var(--kk);color:var(--bg);border:2px solid var(--surface);border-radius:8px;padding:4px 8px;font-family:var(--f-display);font-weight:700;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35);line-height:1.15;text-align:center}
+.kkpin small{display:block;font-family:var(--f-mono);font-weight:400;font-size:10px;opacity:.8}
+.kkpin.sel{outline:2px solid var(--accent);outline-offset:2px}
+.kkpin.dim{opacity:.25}
+
+/* sheet */
+#sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;background:var(--surface);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;height:58%;transition:height .25s ease;min-height:0}
+#sheet[data-size="peek"]{height:118px}
+#sheet[data-size="full"]{height:calc(100% - 12px)}
+.grab{flex:0 0 auto;border:0;background:none;padding:8px 0 2px;cursor:pointer;display:grid;place-items:center;width:100%}
+.grab span{width:40px;height:4px;border-radius:2px;background:var(--line)}
+.sheet-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-block:2px 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line)}
+.sheet-head h2{margin:0;font-size:13px;font-weight:700;letter-spacing:.02em}
+.sheet-head .count{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.scroll{flex:1 1 auto;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,0px)}
+.vlist{list-style:none;margin:0;padding:0}
+.vitem{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:start;padding-block:11px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-top:0}
+.vitem:hover{background:var(--bg)}
+.vitem .dot{width:10px;height:10px;border-radius:50%;background:var(--c);margin-top:5px}
+.vitem .nm{font-weight:700;font-size:14px;line-height:1.35;min-width:0}
+.vitem .sub{grid-column:2;color:var(--muted);font-size:12px;line-height:1.45;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vitem .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:2px}
+.empty{padding:24px 16px;color:var(--muted);line-height:1.6}
+
+/* detail */
+.detail{padding-block:12px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.back{align-self:flex-start;border:1px solid var(--line);background:var(--surface);border-radius:999px;height:30px;padding:0 12px;cursor:pointer;font-size:12.5px}
+.dhead{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c);font-weight:500}
+.dhead h3{margin:0;font-family:var(--f-display);font-size:20px;line-height:1.25;text-wrap:balance}
+.addr{color:var(--muted);font-size:12.5px;line-height:1.5}
+.links{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--ink);color:var(--ink);text-decoration:none;font-size:12.5px;font-weight:500}
+.btn.solid{background:var(--ink);color:var(--surface)}
+.note{font-size:12px;color:var(--muted);line-height:1.6;background:var(--bg);border-radius:8px;padding:10px 12px}
+.exs{display:flex;flex-direction:column;gap:10px}
+.ex{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ex.off{opacity:.45}
+.ex h4{margin:0;font-size:14.5px;line-height:1.4}
+.ex .cr{font-size:12.5px;color:var(--muted);line-height:1.5}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;line-height:1.5}
+.meta dt{font-family:var(--f-mono);color:var(--muted);font-size:10.5px;letter-spacing:.06em;padding-top:2px}
+.meta dd{margin:0;font-variant-numeric:tabular-nums;min-width:0}
+.tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;background:var(--chip);border-radius:4px;padding:2px 6px}
+.tag.u30{background:var(--ink);color:var(--surface)}
+.ex a.more{font-size:12px;color:var(--accent);text-decoration:none;font-weight:500;align-self:flex-start}
+.ex a.more:hover{text-decoration:underline}
+.closed{font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+
+@media (min-width:960px){
+  #app{grid-template-rows:auto 1fr}
+  main{grid-template-columns:400px 1fr}
+  #map{position:relative;inset:auto;grid-column:2}
+  #sheet,#sheet[data-size]{position:relative;grid-column:1;grid-row:1;height:auto;border-radius:0;border-top:0;border-right:1px solid var(--line);box-shadow:none}
+  .grab{display:none}
+  .sheet-head{padding-top:12px}
+  header{display:flex;flex-wrap:wrap;align-items:center;column-gap:20px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .bar{padding:0;flex:0 0 auto;min-height:0}
+  .bar h1{font-size:19px;flex:0 0 auto}
+  .bar .dates{display:block}
+  .ftoggle,.dates-m,.fdone{display:none}
+  .filters,header.open .filters{display:contents}
+  header{row-gap:8px}
+  .controls{flex:1 1 360px;max-width:640px;flex-wrap:nowrap}
+  .controls input[type=search]{flex:1 1 auto!important}
+  .controls select{flex:0 0 auto}
+  .chips{flex:1 0 100%}
+}
+@media (prefers-reduced-motion:reduce){#sheet,.pin{transition:none}}
+
+.locbtn{width:34px;height:34px;display:grid;place-items:center;background:var(--surface);color:var(--ink);border:2px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0;background-clip:padding-box}
+.locbtn.on{color:var(--accent)}
+.locbtn.busy svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.me{width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 1px 6px rgba(0,0,0,.35)}
+.toast{position:absolute;left:50%;transform:translateX(-50%);top:calc(56px + env(safe-area-inset-top,0px));z-index:900;background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:8px;font-size:12.5px;max-width:calc(100% - 32px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.vitem .dist{font-family:var(--f-mono);font-size:11px;color:var(--accent);white-space:nowrap}
+</style>
+</head>
+<body>
+
+
+<div id="app">
+  <header id="hdr">
+    <div class="bar">
+      <h1>DESIGNART TOKYO 2026 <span>会場マップ</span></h1>
+      <p class="dates">10.30 FRI – 11.08 SUN ／ Hibiki</p>
+      <button class="ftoggle" id="ftoggle" aria-expanded="false" aria-controls="filters">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+        <span>絞り込み</span><b id="fcount" hidden></b>
+      </button>
+    </div>
+    <div class="filters" id="filters">
+    <p class="dates-m">10.30 FRI – 11.08 SUN ／ Hibiki</p>
+    <div class="controls">
+      <input type="search" id="q" placeholder="出展者・会場・展示名で検索" aria-label="検索">
+      <select id="day" aria-label="日付で絞り込み"></select>
+      <select id="genre" aria-label="ジャンルで絞り込み"></select>
+    </div>
+    <div class="chips" id="areas" role="group" aria-label="エリア"></div>
+    <div class="fdone"><button class="reset" id="freset">条件をクリア</button><button class="done" id="fdone">地図を見る</button></div>
+    </div>
+  </header>
+  <main>
+    <div id="map" aria-label="地図"></div>
+    <section id="sheet" data-size="half" aria-label="会場リスト">
+      <button class="grab" id="grab" aria-label="リストの大きさを切り替え"><span></span></button>
+      <div class="sheet-head"><h2 id="sh-title">会場一覧</h2><span class="count" id="sh-count"></span></div>
+      <div class="scroll" id="scroll"></div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+const V = [{"k": "KK", "lat": 35.674, "lng": 139.7632, "name": "AUTOBAHN / KK線（メイン会場）", "addr": "東京都中央区銀座西2-2先（入口：東京交通会館となり）", "area": "銀座", "ex": [{"id": 16025, "t": "DESIGNART TOKYO 2026 メイン会場 AUTOBAHN", "g": ["ART", "INTERIOR", "PRODUCTS", "FASHION", "TECHNOLOGY", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00(10/30は12:00〜、11/3は17:00まで)", "c": "約50組の展示＋The Design Store＋TALK SESSION", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13798, "t": "ANKA Taller「プリエゴ・コレクション」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "ANKA Taller", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13807, "t": "AZUMA PLYWOOD × HAKUTEN「RE : FIT」", "g": ["ART", "INTERIOR", "PRODUCTS", "UNDER30"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "AZUMA PLYWOOD × HAKUTEN", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13834, "t": "DAIKAN × 130（ONE THIRTY）｜FLUX TABLE", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "ダイカン / 130", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14023, "t": "Forman+RyogaOsada「Part PJ越前工芸品」", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Forman+Ryoga Osada", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13819, "t": "HAKU | PULSE", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT", "UNDER30"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "PULSE", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13833, "t": "HAKUTEN INTERIOR DESIGN ROOM「SALVAGED WORKS」", "g": ["PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "HAKUTEN INTERIOR DESIGN ROOM", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13812, "t": "HOWDUNIT「Shadow Drawing」", "g": ["ART", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "HOWDUNIT", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13804, "t": "HaKU Design Studio「FUWA」", "g": ["ART", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "HaKU Design Studio", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13839, "t": "ICOMA「Nature ⇌ Robotics ⇌ Mobility」", "g": ["TECHNOLOGY"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "ICOMA", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14027, "t": "Konel & X Vision「Landscape Superimpose LED」", "g": ["ART", "TECHNOLOGY"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Konel / X Vision", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14286, "t": "MEET THE SWEDISH EXHIBITORS AT DESIGNART", "g": ["ART", "INTERIOR", "PRODUCTS", "FASHION", "TECHNOLOGY", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜18:00", "c": "Swedish Style", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14030, "t": "NII│2026 Collection", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Industrial Facility / 和田光平 / 田幸宏崇", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13802, "t": "Paper Parade | 紙のクレヨン", "g": ["PRODUCTS", "CRAFT"], "d": "10.31〜11.3", "h": "12:00〜19:00", "c": "Paper Parade", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13826, "t": "RHEO | Toshitaka Ando — In One Form / or Another", "g": ["ART", "PRODUCTS", "TECHNOLOGY", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "RHEO | 安藤寿孝", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 15154, "t": "Reddish Studio「Speculative Hummus」", "g": ["ART", "INTERIOR", "PRODUCTS", "TECHNOLOGY", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Reddish Studio", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13800, "t": "TAKASHI TESHIMA DESIGN | 対照的な2つの要素の両立", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "手嶋隆史", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14024, "t": "Tai36「自動車技術を日常の道具へ」", "g": ["PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Tai36", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14026, "t": "Takuya Hirano「structure chair」", "g": ["ART", "PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "11:00〜18:00", "c": "Takuya Hirano", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14025, "t": "YUKAKO KONISHI｜A_WAKE ?", "g": ["ART", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "YUKAKO KONISHI｜SEIJAKU", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14028, "t": "h220430「FLAT/FORM」", "g": ["PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "h220430", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13843, "t": "ritual｜リチュアル", "g": ["INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "本保 / 齋藤智子", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14011, "t": "yusan stool & plate", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "yusan", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13814, "t": "アマナ「MOIRÉ 干渉するイメージ」", "g": ["ART", "TECHNOLOGY"], "d": "10.30〜11.3", "h": "10:00〜18:00", "c": "アマナ / FIGLAB / Qosmo", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13846, "t": "トキオ。", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Asobi", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13801, "t": "三菱電機 統合デザイン研究所「STRUCTURE LAB」", "g": ["PRODUCTS", "TECHNOLOGY"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "三菱電機 統合デザイン研究所", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13844, "t": "下出翔太「CONTEXTS」", "g": ["PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "SHOTA SHIMODE STUDIO", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13830, "t": "図工「石のラジオとエラーナンバー」", "g": ["PRODUCTS", "TECHNOLOGY"], "d": "10.30〜11.3", "h": "10:00〜20:00", "c": "図工（谷雄一郎）", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13840, "t": "山口暁「時の交差点_Edition」", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜20:00", "c": "akira yamaguchi studio", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 14029, "t": "東大発 IGNITE「問いの預かり所」", "g": ["ART", "PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "12:00〜18:00", "c": "IGNITE / フーテン建築", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13808, "t": "根本昌汰＋沼野航「TRAIN CHAIR」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "根本昌汰 / 沼野航", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13803, "t": "璃河「縐・哲学」", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Glassriver", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13815, "t": "竹内瑠奈「コンポジションとパーセプション」", "g": ["ART", "INTERIOR", "PRODUCTS", "FASHION", "CRAFT", "UNDER30"], "d": "10.30〜11.3", "h": "10:00〜19:00", "c": "Runa Takeuchi", "v": "AUTOBAHN / KK線（メイン会場）"}, {"id": 13799, "t": "齋藤大路朗「存在のグルーヴ」", "g": ["ART", "INTERIOR", "CRAFT"], "d": "10.30〜11.3", "h": "11:00〜19:00", "c": "齋藤大路朗", "v": "AUTOBAHN / KK線（メイン会場）"}]}, {"k": "35.65078,139.70119", "lat": 35.650784, "lng": 139.701187, "name": "boy iS", "addr": "東京都渋谷区猿楽町13-5", "area": "代官山", "ex": [{"id": 14013, "t": "Creative リトアニア", "g": ["ART"], "d": "10.30〜11.8", "h": "11:00〜19:00(火曜定休・曜日で変動)", "c": "KOI Creative Studio", "v": "boy iS"}]}, {"k": "35.65036,139.71231", "lat": 35.650364, "lng": 139.712311, "name": "アルフレックス東京", "addr": "東京都渋谷区広尾1-1-40", "area": "代官山", "ex": [{"id": 13774, "t": "平澤まりこ「語りかける木々は ことばにならない歌をうたう」", "g": ["ART", "INTERIOR"], "d": "10.29〜11.17", "h": "11:00〜18:00(水曜定休)", "c": "平澤まりこ", "v": "アルフレックス東京"}]}, {"k": "35.64839,139.70059", "lat": 35.648392, "lng": 139.700592, "name": "ヒルサイドフォーラム", "addr": "東京都渋谷区猿楽町18-8", "area": "代官山", "ex": [{"id": 13829, "t": "REFINVERSE Group × 乃村工藝社 no.10「＝(イコール)」", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜20:00", "c": "REFINVERSE Group / 乃村工藝社 no.10", "v": "ヒルサイドフォーラム"}, {"id": 13824, "t": "UACJ×乃村工藝社│アルミは動き出す", "g": ["ART", "PRODUCTS"], "d": "10.30〜11.3", "h": "10:00〜20:00", "c": "UACJ / 乃村工藝社", "v": "ヒルサイドフォーラム"}, {"id": 13832, "t": "乃村工藝社「SEPARATION 空間をほどく」", "g": ["INTERIOR", "PRODUCTS", "TECHNOLOGY"], "d": "10.30〜11.3", "h": "10:00〜20:00", "c": "乃村工藝社", "v": "ヒルサイドフォーラム"}]}, {"k": "35.66110,139.73659", "lat": 35.661095, "lng": 139.736588, "name": "Ambientec Gallery Tokyo ／ AURAS Residential Experience Center ／ アクシスギャラリー", "addr": "東京都港区六本木5-17-1 AXISビル 2F", "area": "六本木", "ex": [{"id": 13790, "t": "AURAS ラグジュアリー住空間", "g": ["ART", "INTERIOR", "PRODUCTS", "TECHNOLOGY"], "d": "10.30〜", "h": "10:00〜18:00", "c": "オーラス / Barco Residential / 谷口勝彦", "v": "AURAS Residential Experience Center"}, {"id": 13756, "t": "Ambientec | BEYOND CONSUMPTION -消費の先へ-", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "12:00〜19:00(水曜定休)", "c": "Ambientec", "v": "Ambientec Gallery Tokyo"}, {"id": 14015, "t": "Industrial Romanticism 2", "g": ["INTERIOR", "PRODUCTS", "TECHNOLOGY"], "d": "10.30〜11.8", "h": "11:00〜20:00", "c": "Industrial Romanticism展実行委員会 / アクシス", "v": "アクシスギャラリー"}]}, {"k": "35.66402,139.73326", "lat": 35.664017, "lng": 139.733261, "name": "Common", "addr": "東京都港区六本木4-8-5", "area": "六本木", "ex": [{"id": 13796, "t": "Sakura Onodera「FLYER」", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.8", "h": "8:00〜23:00(日〜17:30)", "c": "Sakura Onodera", "v": "Common"}]}, {"k": "35.66155,139.74092", "lat": 35.661549, "lng": 139.740921, "name": "LUCLUM", "addr": "東京都港区麻布台1-3-1", "area": "六本木", "ex": [{"id": 13760, "t": "LUCLUM「G8」", "g": ["INTERIOR"], "d": "10.30〜", "h": "10:00〜20:00", "c": "LUCLUM", "v": "LUCLUM"}]}, {"k": "35.66008,139.73987", "lat": 35.660076, "lng": 139.739868, "name": "Paola Lenti Tokyo", "addr": "東京都港区麻布台3-5-5", "area": "六本木", "ex": [{"id": 13784, "t": "Paola Lenti「WOVEN LANDSCAPES」", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.7", "h": "11:00〜18:00(日祝定休)", "c": "Paola Lenti", "v": "Paola Lenti Tokyo"}]}, {"k": "35.66844,139.73842", "lat": 35.668442, "lng": 139.738419, "name": "RYOTA YOKOZEKI STUDIO", "addr": "東京都港区赤坂2-22-17", "area": "六本木", "ex": [{"id": 13793, "t": "RYOTA YOKOZEKI「From Flat」", "g": ["INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.24〜11.8", "h": "11:00〜18:00", "c": "横関亮太", "v": "RYOTA YOKOZEKI STUDIO"}]}, {"k": "35.66021,139.72920", "lat": 35.660206, "lng": 139.729202, "name": "エストネーション六本木ヒルズ店 ／ 森美術館", "addr": "東京都港区六本木6-10-2", "area": "六本木", "ex": [{"id": 15151, "t": "TINGATINGA ART（Maurus Malikita）", "g": ["ART"], "d": "10.30〜11.10", "h": "11:00〜20:00", "c": "Maurus Malikita / SIWA TINGATINGA", "v": "エストネーション六本木ヒルズ店"}, {"id": 15149, "t": "森美術館「森万里子：燦燦」", "g": ["ART"], "d": "10.31〜2027.3.28", "h": "10:00〜22:00(火〜17:00)", "c": "森万里子", "v": "森美術館"}]}, {"k": "35.66602,139.73221", "lat": 35.666023, "lng": 139.732208, "name": "東京ミッドタウン ガレリア 2F", "addr": "東京都港区赤坂9-7-4", "area": "六本木", "ex": [{"id": 13818, "t": "Fushi Sano + Mio Haruhana「BONE VOYAGE」", "g": ["ART", "PRODUCTS", "TECHNOLOGY", "UNDER30"], "d": "10.16〜11.4", "h": "11:00〜20:00", "c": "Fushi Sano + Mio Haruhana", "v": "東京ミッドタウン ガレリア 2F"}, {"id": 13817, "t": "鍋梨世知「Tempura Object」", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT", "UNDER30"], "d": "10.16〜11.4", "h": "11:00〜20:00", "c": "鍋梨世知", "v": "東京ミッドタウン ガレリア 2F"}]}, {"k": "35.66761,139.70692", "lat": 35.667614, "lng": 139.706924, "name": "HAY TOKYO（GYRE B1F）", "addr": "東京都渋谷区神宮前5-10-1", "area": "原宿", "ex": [{"id": 13785, "t": "HAY", "g": ["INTERIOR"], "d": "10.30〜11.8", "h": "11:00〜19:00", "c": "HAY", "v": "HAY TOKYO（GYRE B1F）"}]}, {"k": "35.67398,139.71193", "lat": 35.673977, "lng": 139.711929, "name": "LTshop", "addr": "東京都渋谷区神宮前2-11-15", "area": "原宿", "ex": [{"id": 13762, "t": "formuniform “Shades – New Edition”", "g": ["PRODUCTS"], "d": "10.30〜11.8", "h": "11:00〜19:00", "c": "formuniform", "v": "LTshop"}]}, {"k": "35.67238,139.71022", "lat": 35.672382, "lng": 139.71022, "name": "ROLF BENZ TOKYO", "addr": "東京都渋谷区神宮前3-30-12", "area": "原宿", "ex": [{"id": 13761, "t": "ROLF BENZ meets Yuta Okuda「Living with Gratitude」", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.24", "h": "11:00〜19:00(水曜定休)", "c": "奥田雄太 / ROLF BENZ", "v": "ROLF BENZ TOKYO"}]}, {"k": "35.67442,139.70462", "lat": 35.674423, "lng": 139.70462, "name": "SAS®", "addr": "東京都渋谷区千駄ヶ谷3-56-3 B1F", "area": "原宿", "ex": [{"id": 13773, "t": "invisi「おとを、しつらえる。」", "g": ["ART", "TECHNOLOGY", "CRAFT"], "d": "10.30〜11.8", "h": "11:00〜18:00", "c": "invisi", "v": "SAS®"}]}, {"k": "35.66617,139.70892", "lat": 35.666168, "lng": 139.708923, "name": "TIERS GALLERY", "addr": "東京都渋谷区神宮前5-7-12", "area": "原宿", "ex": [{"id": 13781, "t": "21B STUDIO 個展「ハコ」", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.8", "h": "11:00〜19:00", "c": "21B STUDIO", "v": "TIERS GALLERY"}]}, {"k": "35.67183,139.70386", "lat": 35.671829, "lng": 139.703857, "name": "dotcom space Tokyo", "addr": "東京都渋谷区神宮前1-19-19 B1F", "area": "原宿", "ex": [{"id": 15146, "t": "ISHINOMAKI LABORATORY「Moving Forward」", "g": ["INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.17〜11.15", "h": "10:00〜18:30", "c": "石巻工房", "v": "dotcom space Tokyo"}]}, {"k": "35.67219,139.71544", "lat": 35.672188, "lng": 139.715439, "name": "AREA Tokyo", "addr": "東京都港区北青山2-10-28 1F", "area": "外苑前", "ex": [{"id": 13787, "t": "AREA「季節箱」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜", "h": "11:00〜19:00", "c": "AREA", "v": "AREA Tokyo"}]}, {"k": "35.66993,139.71995", "lat": 35.66993, "lng": 139.719955, "name": "Andreu World Tokyo Showroom", "addr": "東京都港区南青山2-19-6 ラティオ南青山 1F", "area": "外苑前", "ex": [{"id": 13791, "t": "MEET US AT DESIGNART TOKYO 2026｜Andreu World", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜11.7", "h": "10:00〜18:00(日曜定休)", "c": "Andreu World", "v": "Andreu World Tokyo Showroom"}]}, {"k": "35.66503,139.72098", "lat": 35.665031, "lng": 139.720978, "name": "EcoSmart Fire 東京ショールーム", "addr": "東京都港区南青山2-31-6 1F", "area": "外苑前", "ex": [{"id": 13755, "t": "EcoSmart Fire新商品「Halo」design by Fumie Shibata", "g": ["INTERIOR", "PRODUCTS"], "d": "10.17〜11.30", "h": "11:00〜19:00", "c": "EcoSmart Fire", "v": "EcoSmart Fire 東京ショールーム"}]}, {"k": "35.67107,139.71758", "lat": 35.671074, "lng": 139.717575, "name": "MAARKET", "addr": "東京都港区北青山2-7-15", "area": "外苑前", "ex": [{"id": 13788, "t": "Muuto and Knoll — Timeless Icons, New Perspectives", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.28〜11.18", "h": "12:00〜19:00", "c": "Muuto / Knoll", "v": "MAARKET"}]}, {"k": "35.67224,139.71251", "lat": 35.672241, "lng": 139.712509, "name": "Roche Bobois TOKYO", "addr": "東京都渋谷区神宮前3-35-1", "area": "外苑前", "ex": [{"id": 13754, "t": "Roche Bobois「新作SCRIPTソファ」", "g": ["INTERIOR"], "d": "10.30〜11.8", "h": "11:00〜19:00", "c": "Roche Bobois", "v": "Roche Bobois TOKYO"}]}, {"k": "35.66705,139.71725", "lat": 35.667046, "lng": 139.717255, "name": "Spazio Edra TOKYO AOYAMA", "addr": "東京都港区南青山3-4-8", "area": "外苑前", "ex": [{"id": 13772, "t": "“Anywhere” — THE JAPAN DEBUT | Edra 2026 NEW COLLECTION", "g": ["INTERIOR"], "d": "11.6〜11.8", "h": "11:00〜18:00", "c": "Francesca Binfaré", "v": "Spazio Edra TOKYO AOYAMA"}]}, {"k": "35.67017,139.72179", "lat": 35.67017, "lng": 139.721786, "name": "TROLLEY", "addr": "東京都港区南青山2-9-18", "area": "外苑前", "ex": [{"id": 13768, "t": "小柳祐介｜小野象平「器車 RC POTTERY “CONCEPT”」", "g": ["ART", "INTERIOR", "PRODUCTS", "TECHNOLOGY"], "d": "10.30〜11.29", "h": "13:00〜19:00(火水休)", "c": "小柳祐介 / 小野象平", "v": "TROLLEY"}]}, {"k": "35.67118,139.72031", "lat": 35.671181, "lng": 139.720306, "name": "カッシーナ・イクスシー青山本店", "addr": "東京都港区南青山2-12-14", "area": "外苑前", "ex": [{"id": 13767, "t": "IXC「OZU sofa designed by Vico Magistretti」", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.22〜", "h": "11:00〜18:00(水曜定休)", "c": "IXC", "v": "カッシーナ・イクスシー青山本店"}]}, {"k": "35.67056,139.71562", "lat": 35.670555, "lng": 139.715622, "name": "ロイヤルファニチャーコレクション 東京ショールーム", "addr": "東京都港区北青山2-12-4", "area": "外苑前", "ex": [{"id": 13786, "t": "ROYAL FURNITURE COLLECTION", "g": ["INTERIOR"], "d": "10.30〜", "h": "10:00〜18:00", "c": "ROYAL FURNITURE COLLECTION", "v": "ロイヤルファニチャーコレクション 東京ショールーム"}]}, {"k": "35.67906,139.76184", "lat": 35.679062, "lng": 139.761841, "name": "USM東京ショールーム", "addr": "東京都千代田区丸の内2-1-1", "area": "東京", "ex": [{"id": 13775, "t": "USM「The Moving Library」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.31〜11.3", "h": "11:00〜18:00", "c": "USM", "v": "USM東京ショールーム"}]}, {"k": "35.67137,139.75806", "lat": 35.671375, "lng": 139.758057, "name": "帝国ホテル 東京「The Rendez-Vous AWA」", "addr": "東京都千代田区内幸町1-1-1", "area": "東京", "ex": [{"id": 13841, "t": "xorium「AUTONOMA」", "g": ["ART", "PRODUCTS", "TECHNOLOGY"], "d": "10.30〜11.8", "h": "10:00〜22:30", "c": "xorium", "v": "帝国ホテル 東京「The Rendez-Vous AWA」"}]}, {"k": "35.66959,139.75896", "lat": 35.66959, "lng": 139.758957, "name": "日比谷OKUROJI", "addr": "東京都千代田区内幸町1-7-1", "area": "東京", "ex": [{"id": 13809, "t": "&MEDICAL「MALLOW COLLECTION 2026」", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "10:00〜19:00", "c": "&MEDICAL", "v": "日比谷OKUROJI [H05]"}, {"id": 13827, "t": "ITOMA「影を生ける」", "g": ["ART", "PRODUCTS", "GREEN"], "d": "10.30〜11.8", "h": "11:00〜20:00", "c": "ITOMA", "v": "日比谷OKUROJI"}, {"id": 13797, "t": "NAhn NAhn「Urushi Drop」", "g": ["INTERIOR", "CRAFT"], "d": "10.30〜11.8", "h": "10:00〜18:00", "c": "NAhn NAhn", "v": "日比谷OKUROJI"}, {"id": 13823, "t": "SNU DESIGN「Micro Contexts.」", "g": ["ART", "INTERIOR", "PRODUCTS", "TECHNOLOGY", "CRAFT"], "d": "10.30〜11.8", "h": "10:00〜18:00", "c": "SNU DESIGN", "v": "日比谷OKUROJI"}, {"id": 13810, "t": "WEAiR「Air Vessel」", "g": ["ART", "PRODUCTS"], "d": "10.30〜11.8", "h": "11:00〜19:00(11/4休)", "c": "濵沙由美", "v": "日比谷OKUROJI オープンスペース"}, {"id": 13820, "t": "今野雅也「存りもしない幹」", "g": ["INTERIOR", "UNDER30"], "d": "10.30〜11.8", "h": "10:00〜19:00", "c": "今野雅也", "v": "日比谷OKUROJI"}, {"id": 13838, "t": "坂本陽太郎 | Schattenrequisit: Column", "g": ["ART", "TECHNOLOGY"], "d": "10.30〜11.8", "h": "11:00〜19:00", "c": "坂本陽太郎", "v": "日比谷OKUROJI"}, {"id": 13805, "t": "藤堂真也「MONUKE | Table Lamp Series」", "g": ["ART", "PRODUCTS", "TECHNOLOGY"], "d": "10.30〜11.8", "h": "10:00〜19:00", "c": "藤堂真也", "v": "日比谷OKUROJI"}]}, {"k": "35.65096,139.68204", "lat": 35.650955, "lng": 139.682037, "name": "GREEN BOX IKEJIRI", "addr": "東京都世田谷区池尻3-5-32", "area": "池尻", "ex": [{"id": 13789, "t": "GREEN BOX IKEJIRI", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "12:00〜20:00", "c": "鈴木淳平", "v": "GREEN BOX IKEJIRI"}, {"id": 13822, "t": "Morii Darshan (hand-embroidered Renaissance)", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT", "GREEN"], "d": "10.30〜11.8", "h": "10:00〜18:00", "c": "Morii Darshan", "v": "GREEN BOX IKEJIRI"}]}, {"k": "35.64566,139.68091", "lat": 35.645664, "lng": 139.680908, "name": "HOME/WORK VILLAGE", "addr": "東京都世田谷区池尻2-4-5", "area": "池尻", "ex": [{"id": 13758, "t": "シチズン×ヤマハ デザイン展「FIND RHYTHM」", "g": ["ART", "PRODUCTS"], "d": "10.30〜11.8", "h": "12:00〜18:00(金土日祝11:00〜21:00)", "c": "ヤマハ / シチズン時計", "v": "HOME/WORK VILLAGE"}]}, {"k": "35.65134,139.68187", "lat": 35.651337, "lng": 139.68187, "name": "OFS GALLERY", "addr": "東京都世田谷区池尻3-7-3", "area": "池尻", "ex": [{"id": 15178, "t": "POSTERS新作展（川尻竜一・山口崇多・安田昂弘）", "g": ["ART", "INTERIOR"], "d": "10.24〜11.9", "h": "12:00〜20:00(火水定休)", "c": "POSTERS", "v": "OFS GALLERY"}]}, {"k": "35.65227,139.68738", "lat": 35.652271, "lng": 139.687378, "name": "SEMPRE", "addr": "東京都目黒区大橋2-16-26", "area": "池尻", "ex": [{"id": 13792, "t": "SEMPRE「Living with Icons」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "11:00〜19:00", "c": "SEMPRE DESIGN", "v": "SEMPRE"}]}, {"k": "35.65115,139.67925", "lat": 35.651154, "lng": 139.679245, "name": "unframe", "addr": "東京都世田谷区池尻3-11-6", "area": "池尻", "ex": [{"id": 14021, "t": "bluestract「WHO IS THE TARGET｜Covid-19 2020〜2023」", "g": ["ART"], "d": "10.30〜11.8", "h": "12:00〜20:00", "c": "bluestract｜森谷健久", "v": "unframe"}]}, {"k": "35.66662,139.70778", "lat": 35.666618, "lng": 139.707779, "name": "Artek Tokyo", "addr": "東京都渋谷区神宮前5-9-20", "area": "表参道", "ex": [{"id": 13770, "t": "Artek + Hender Scheme ー Crafted by hand, completed through living", "g": ["INTERIOR", "PRODUCTS", "FASHION", "CRAFT"], "d": "10.10〜11.16", "h": "11:00〜19:00(火曜定休)", "c": "Artek + Hender Scheme", "v": "Artek Tokyo"}]}, {"k": "35.66337,139.71341", "lat": 35.663372, "lng": 139.713409, "name": "BALMUDA The Store Aoyama", "addr": "東京都港区南青山5-5-3", "area": "表参道", "ex": [{"id": 14276, "t": "BALMUDA The Store Aoyama", "g": ["PRODUCTS", "TECHNOLOGY"], "d": "10.30〜", "h": "11:00〜19:00(不定休)", "c": "BALMUDA", "v": "BALMUDA The Store Aoyama"}]}, {"k": "35.66011,139.71780", "lat": 35.660114, "lng": 139.717804, "name": "CLAY STUDIO", "addr": "東京都港区南青山6-6-15", "area": "表参道", "ex": [{"id": 13766, "t": "CLAY 10Years Brewing", "g": ["ART", "INTERIOR", "GREEN"], "d": "11.6〜11.8", "h": "12:00〜18:00", "c": "FUJIFILM Design Center", "v": "CLAY STUDIO"}]}, {"k": "35.66483,139.71063", "lat": 35.664833, "lng": 139.710632, "name": "ESCAPERS AN OTHER WORLD", "addr": "東京都港区北青山3-7-10", "area": "表参道", "ex": [{"id": 13835, "t": "白石陽一 Solo Exhibition「模倣 'Imitation'」", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.8", "h": "12:00〜18:00(11/4・11/5休)", "c": "白石陽一", "v": "ESCAPERS AN OTHER WORLD"}]}, {"k": "35.66317,139.71527", "lat": 35.66317, "lng": 139.715271, "name": "FLEXFORM TOKYO", "addr": "東京都港区南青山5-3-20", "area": "表参道", "ex": [{"id": 13782, "t": "FLEXFORM「The Private Lives of Objects」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "11:00〜19:00(水曜定休)", "c": "FLEXFORM / Antonio Citterio / 柴田文江 ほか", "v": "FLEXFORM TOKYO"}]}, {"k": "35.66196,139.71603", "lat": 35.661964, "lng": 139.716034, "name": "LA COLLEZIONE UNO", "addr": "東京都港区南青山6-1-3", "area": "表参道", "ex": [{"id": 13806, "t": "LIXIL 360°| 365日 豊かさの拡張", "g": ["INTERIOR", "PRODUCTS"], "d": "11.2〜11.8", "h": "10:00〜19:00(初日12:00〜)", "c": "LIXIL", "v": "LA COLLEZIONE UNO"}]}, {"k": "35.66035,139.71364", "lat": 35.660347, "lng": 139.713638, "name": "LIGHT BOX GALLERY", "addr": "東京都港区南青山5-15-9", "area": "表参道", "ex": [{"id": 13764, "t": "Fab-topia ものづくりの理想郷－富山", "g": ["PRODUCTS", "CRAFT"], "d": "10.30〜11.8", "h": "10:00〜18:30", "c": "デザインウエーブ開催委員会", "v": "LIGHT BOX GALLERY"}]}, {"k": "35.66091,139.71411", "lat": 35.660908, "lng": 139.714111, "name": "LIGHT BOX STUDIO", "addr": "東京都港区南青山5-16-7", "area": "表参道", "ex": [{"id": 13757, "t": "セイコーウオッチ「からくりの森」", "g": ["ART"], "d": "10.30〜11.23", "h": "11:00〜20:00", "c": "セイコーウオッチ / 荒牧悠 / 鈴木康洋 / 三好賢聖", "v": "LIGHT BOX STUDIO"}]}, {"k": "35.66027,139.71593", "lat": 35.660275, "lng": 139.715927, "name": "LIONRUGS青山店", "addr": "東京都港区南青山6-11-1 スリーエフビルディング", "area": "表参道", "ex": [{"id": 14283, "t": "ART&Heritage", "g": ["ART", "INTERIOR", "CRAFT"], "d": "10.30〜11.24", "h": "10:00〜19:00(水曜定休)", "c": "LIONRUGS", "v": "LIONRUGS青山店"}]}, {"k": "35.66390,139.70950", "lat": 35.663898, "lng": 139.709503, "name": "Re Gallery SCEARN", "addr": "東京都港区北青山3-13-7 2F", "area": "表参道", "ex": [{"id": 13836, "t": "余白の継承 - Inheritance of Silence / Group Exhibition", "g": ["ART", "INTERIOR", "PRODUCTS", "FASHION", "CRAFT"], "d": "10.30〜11.15", "h": "11:00〜19:00(11/2・11/9休)", "c": "Kim Junsu / Kim Minwook / Lætitia Jacquetton / 壹岐倫子 / May Masutani", "v": "Re Gallery SCEARN"}]}, {"k": "35.66349,139.71747", "lat": 35.66349, "lng": 139.717468, "name": "Rinnai Aoyama ／ リンナイ青山", "addr": "東京都港区南青山4-18-11", "area": "表参道", "ex": [{"id": 15599, "t": "ICC Immersion Design 2026 Talk Event", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "11.7のみ", "h": "16:00〜18:30", "c": "日仏クリエイター", "v": "リンナイ青山"}, {"id": 13765, "t": "Rinnai Aoyama｜G:LINE New Series", "g": ["PRODUCTS"], "d": "10.30〜11.8", "h": "10:00〜17:00(11/1〜11/3休館)", "c": "リンナイ", "v": "Rinnai Aoyama"}]}, {"k": "35.66015,139.71397", "lat": 35.660149, "lng": 139.713974, "name": "Ripple Design Outpost", "addr": "東京都港区南青山5-18-6", "area": "表参道", "ex": [{"id": 13763, "t": "私たち、そんなに違わないよね？", "g": ["ART", "INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.8", "h": "10:00〜18:00", "c": "Ripple Collective / Shaikha Alketbi", "v": "Ripple Design Outpost"}]}, {"k": "35.66728,139.71230", "lat": 35.667282, "lng": 139.712296, "name": "Ritzwell 表参道 SHOP & ATELIER", "addr": "東京都港区北青山3-4-3", "area": "表参道", "ex": [{"id": 13783, "t": "Ritzwell「リッツウェル家具と手しごと展」", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "11:00〜19:00(水曜定休)", "c": "Ritzwell", "v": "Ritzwell 表参道 SHOP & ATELIER"}]}, {"k": "35.66357,139.71194", "lat": 35.663567, "lng": 139.711945, "name": "THE NIKKA WHISKY TOKYO ／ MAZDA TRANS AOYAMA", "addr": "東京都港区南青山5-6-6", "area": "表参道", "ex": [{"id": 14019, "t": "THE NIKKA WHISKY TOKYO – Flagship BAR", "g": ["ART", "PRODUCTS"], "d": "10.30〜", "h": "17:00〜23:30(土日祝14:00〜)", "c": "ニッカウヰスキー", "v": "THE NIKKA WHISKY TOKYO"}, {"id": 13777, "t": "Vitra「Shaped for Change」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.13〜11.8", "h": "10:00〜18:30(月曜定休)", "c": "Vitra", "v": "MAZDA TRANS AOYAMA"}]}, {"k": "35.66223,139.71443", "lat": 35.662231, "lng": 139.714432, "name": "ふくい南青山291 ／ Poliform TOKYO", "addr": "東京都港区南青山5-4-41", "area": "表参道", "ex": [{"id": 13778, "t": "HAND THOUGHT", "g": ["PRODUCTS", "CRAFT"], "d": "10.30〜11.8", "h": "10:00〜19:00", "c": "Kairi Eguchi / James Kaoru Bury / Daiki Tado", "v": "ふくい南青山291"}, {"id": 13759, "t": "Poliform The Latest Collection", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜", "h": "11:00〜18:00(水曜定休)", "c": "Poliform", "v": "Poliform TOKYO"}]}, {"k": "35.66714,139.71013", "lat": 35.667141, "lng": 139.710129, "name": "エスティック フォルマックス表参道", "addr": "東京都渋谷区神宮前4-10-4", "area": "表参道", "ex": [{"id": 13776, "t": "formax new collection 2027 | BCXSY", "g": ["ART", "INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "10:30〜18:30", "c": "エスティック", "v": "エスティック フォルマックス表参道"}]}, {"k": "35.66563,139.71277", "lat": 35.665634, "lng": 139.712769, "name": "カール・ハンセン＆サン 東京本店", "addr": "東京都港区北青山3-5-12", "area": "表参道", "ex": [{"id": 13753, "t": "カール・ハンセン＆サン「Balanced Principles」", "g": ["INTERIOR", "PRODUCTS"], "d": "10.23〜11.8", "h": "11:00〜19:00", "c": "カール・ハンセン＆サン", "v": "カール・ハンセン＆サン 東京本店"}]}, {"k": "35.66394,139.71393", "lat": 35.66394, "lng": 139.713928, "name": "ポルトローナ・フラウ東京青山", "addr": "東京都港区南青山5-2-13", "area": "表参道", "ex": [{"id": 13769, "t": "奈良祐希「Shiwa - 間 / MA」", "g": ["ART", "INTERIOR"], "d": "10.30〜11.8", "h": "11:00〜19:00(水曜定休)", "c": "奈良祐希 / Poltrona Frau", "v": "ポルトローナ・フラウ東京青山"}]}, {"k": "35.66900,139.76363", "lat": 35.668995, "lng": 139.763626, "name": "GINZA innit", "addr": "東京都中央区銀座7-10-1", "area": "銀座", "ex": [{"id": 15145, "t": "GINZA innit Special Exhibition", "g": ["INTERIOR", "PRODUCTS"], "d": "10.30〜11.8", "h": "11:00〜19:00(月曜定休)", "c": "Hanna Werning × Bob Foundation", "v": "GINZA innit"}]}, {"k": "35.67258,139.76898", "lat": 35.672581, "lng": 139.768982, "name": "KUBOKI TATAMI TOKYO", "addr": "東京都中央区銀座2-11-18", "area": "銀座", "ex": [{"id": 14281, "t": "HIRATA CHAIR × KUBOKI TATAMI「Paja collection」", "g": ["INTERIOR", "PRODUCTS", "CRAFT"], "d": "10.30〜11.8", "h": "10:00〜17:00", "c": "平田椅子製作所 / rararà studio", "v": "KUBOKI TATAMI TOKYO"}]}, {"k": "35.67451,139.76829", "lat": 35.674515, "lng": 139.768295, "name": "NIESSING GINZA", "addr": "東京都中央区銀座1-7-5", "area": "銀座", "ex": [{"id": 13957, "t": "NIESSING × asao TOKOLO | CONNECT / PIECE", "g": ["ART"], "d": "10.30〜11.8", "h": "11:00〜19:30", "c": "野老朝雄", "v": "NIESSING GINZA"}]}, {"k": "35.67431,139.76808", "lat": 35.674309, "lng": 139.768082, "name": "POLA MUSEUM ANNEX", "addr": "東京都中央区銀座1-7-7", "area": "銀座", "ex": [{"id": 15153, "t": "清川あさみ｜名和晃平「Invisible Garden」", "g": ["ART"], "d": "9.16〜11.8", "h": "11:00〜19:00", "c": "清川あさみ / 名和晃平", "v": "POLA MUSEUM ANNEX"}]}, {"k": "35.67112,139.76669", "lat": 35.67112, "lng": 139.766693, "name": "王子ホールディングス本館 エントランスホール", "addr": "東京都中央区銀座4-7-5", "area": "銀座", "ex": [{"id": 13780, "t": "Forest: Perspectives", "g": ["ART", "PRODUCTS", "TECHNOLOGY", "CRAFT", "GREEN"], "d": "10.30〜11.8", "h": "9:00〜17:30(土日祝〜19:00)", "c": "王子ホールディングス / we+", "v": "王子ホールディングス本館 エントランスホール"}]}, {"k": "35.66851,139.76198", "lat": 35.668514, "lng": 139.761978, "name": "資生堂ギャラリー", "addr": "東京都中央区銀座8-8-3", "area": "銀座", "ex": [{"id": 14017, "t": "玉山拓郎「今はいつのことかー小村雪岱と玉山拓郎」", "g": ["ART"], "d": "11.3〜2027.2.28", "h": "11:00〜19:00(月曜休館)", "c": "玉山拓郎", "v": "資生堂ギャラリー"}]}];
+const AREAS = [
+  ["銀座","ginza"],["東京","tokyo"],["六本木","roppongi"],["外苑前","gaienmae"],
+  ["表参道","omotesando"],["原宿","harajuku"],["代官山","daikanyama"],["池尻","ikejiri"]];
+const AREA_KEY = Object.fromEntries(AREAS);
+const AORD = Object.fromEntries(AREAS.map(([a],i)=>[a,i]));
+V.sort((a,b)=>(a.k!=="KK")-(b.k!=="KK") || AORD[a.area]-AORD[b.area] || b.ex.length-a.ex.length);
+const cvar = a => `var(--a-${AREA_KEY[a]||'omotesando'})`;
+const WD = ["日","月","火","水","木","金","土"];
+const BASE = "https://www.designart.jp/designarttokyo2026/exhibitions/";
+
+// ---- date parsing ("10.30〜11.8", "10.30〜", "11.3〜2027.2.28", "11.7のみ")
+function pd(s){ const p=s.split(".").map(Number); return p.length===3? new Date(p[0],p[1]-1,p[2]) : new Date(2026,p[0]-1,p[1]); }
+function range(d){
+  if(d.endsWith("のみ")){ const x=pd(d.replace("のみ","")); return [x,x]; }
+  const [a,b]=d.split("〜"); return [pd(a), b? pd(b) : new Date(2026,10,8)];
+}
+V.forEach(v=>v.ex.forEach(e=>{ e.r=range(e.d); e.all=(e.t+" "+e.c+" "+e.v+" "+v.name).toLowerCase(); }));
+
+const DAYS=[]; for(let d=new Date(2026,9,30); d<=new Date(2026,10,8); d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1)) DAYS.push(d);
+const fmt = d => `${d.getMonth()+1}.${d.getDate()}（${WD[d.getDay()]}）`;
+const same = (a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+
+// ---- state
+const st = { areas:new Set(), day:"", genre:"", q:"", sel:null };
+const today = new Date(); const tIdx = DAYS.findIndex(d=>same(d,today));
+
+// ---- controls
+const daySel=document.getElementById("day");
+daySel.innerHTML = `<option value="">全日程</option>` + DAYS.map((d,i)=>`<option value="${i}">${fmt(d)}${i===tIdx?" 今日":""}</option>`).join("");
+if(tIdx>=0){ daySel.value=String(tIdx); st.day=String(tIdx); }
+const GEN=["INTERIOR","PRODUCTS","ART","CRAFT","TECHNOLOGY","FASHION","GREEN","UNDER30"];
+const genSel=document.getElementById("genre");
+genSel.innerHTML = `<option value="">全ジャンル</option>` + GEN.map(g=>`<option>${g}</option>`).join("");
+const areaBox=document.getElementById("areas");
+function areaCount(a){ return V.filter(v=>v.area===a).reduce((n,v)=>n+v.ex.length,0); }
+areaBox.innerHTML = AREAS.map(([a])=>`<button class="chip" aria-pressed="false" data-a="${a}" style="--c:${cvar(a)}"><i></i>${a}<b>${areaCount(a)}</b></button>`).join("");
+areaBox.addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return;
+  const a=b.dataset.a; st.areas.has(a)?st.areas.delete(a):st.areas.add(a); b.setAttribute("aria-pressed",st.areas.has(a));
+  st.sel=null; render(true); });
+daySel.onchange=()=>{ st.day=daySel.value; render(); };
+genSel.onchange=()=>{ st.genre=genSel.value; render(); };
+let qt; document.getElementById("q").addEventListener("input",e=>{ clearTimeout(qt); qt=setTimeout(()=>{ st.q=e.target.value.trim().toLowerCase(); st.sel=null; render(); },150); });
+
+// ---- filter panel (phones)
+const hdr=document.getElementById("hdr"), ft=document.getElementById("ftoggle");
+function setOpen(o){ hdr.classList.toggle("open",o); ft.setAttribute("aria-expanded",o); }
+ft.onclick=()=>setOpen(!hdr.classList.contains("open"));
+document.getElementById("fdone").onclick=()=>setOpen(false);
+document.getElementById("freset").onclick=()=>{
+  st.areas.clear(); areaBox.querySelectorAll(".chip").forEach(b=>b.setAttribute("aria-pressed","false"));
+  st.day=""; daySel.value=""; st.genre=""; genSel.value=""; st.q=""; document.getElementById("q").value=""; st.sel=null; render();
+};
+function updateBadge(){
+  const n=st.areas.size+(st.day!==""?1:0)+(st.genre?1:0)+(st.q?1:0);
+  const b=document.getElementById("fcount"); b.hidden=!n; b.textContent=n;
+}
+
+// ---- filtering
+function exMatch(e){
+  if(st.genre && !e.g.includes(st.genre)) return false;
+  if(st.q && !e.all.includes(st.q)) return false;
+  return true;
+}
+function exOpen(e){ if(st.day==="") return true; const d=DAYS[+st.day]; return e.r[0]<=d && d<=e.r[1]; }
+function visible(v){
+  if(st.areas.size && !st.areas.has(v.area)) return [];
+  return v.ex.filter(e=>exMatch(e)&&exOpen(e));
+}
+
+// ---- map
+const map = L.map("map",{zoomControl:true,attributionControl:true,minZoom:10,maxZoom:18}).setView([35.664,139.722],14);
+map.zoomControl.setPosition("topright");
+const ATTR='地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a> ／ データ：DESIGNART TOKYO 2026 公式サイト';
+L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",{minZoom:5,maxZoom:18,attribution:ATTR}).addTo(map);
+
+// KK line (approximate course: Sukiyabashi → Tokyo Kotsu Kaikan)
+const KKLINE=[[35.67238,139.76170],[35.67330,139.76245],[35.67420,139.76310],[35.67500,139.76372]];
+const kkLine=L.polyline(KKLINE,{color:getComputedStyle(document.documentElement).getPropertyValue("--kk").trim()||"#16171a",weight:7,opacity:.85,lineCap:"round"}).addTo(map);
+
+const markers={};
+V.forEach(v=>{
+  let icon;
+  if(v.k==="KK"){
+    icon=L.divIcon({className:"",html:`<div class="kkpin">AUTOBAHN<small>KK線 メイン会場</small></div>`,iconSize:null,iconAnchor:[-10,22]});
+  } else {
+    icon=L.divIcon({className:"",html:`<div class="pin"></div>`,iconSize:[26,26],iconAnchor:[13,13]});
+  }
+  const m=L.marker([v.lat,v.lng],{icon,keyboard:true,title:v.name,riseOnHover:true}).addTo(map);
+  m.on("click",()=>select(v.k,false));
+  markers[v.k]=m;
+});
+kkLine.on("click",()=>select("KK",false));
+
+function paintMarkers(){
+  V.forEach(v=>{
+    const el=markers[v.k].getElement(); if(!el) return;
+    const node=el.firstElementChild; const n=visible(v).length;
+    if(v.k!=="KK"){
+      node.style.setProperty("--c",cvar(v.area));
+      const s = n>=4?32: n>=2?27:22; node.style.setProperty("--s",s+"px");
+      node.textContent = n>1? n : "";
+    } else {
+      node.querySelector("small").textContent = `KK線 メイン会場 · ${n}展示`;
+    }
+    node.classList.toggle("dim", n===0);
+    node.classList.toggle("sel", st.sel===v.k);
+    markers[v.k].setZIndexOffset(st.sel===v.k?1000:(n?100:0));
+  });
+}
+
+// ---- current location
+let me=null, meMarker=null, meCircle=null, firstFix=true, watching=false;
+const toastEl=document.createElement("div"); toastEl.className="toast"; toastEl.hidden=true; document.querySelector("main").appendChild(toastEl);
+let tt; function toast(t){ toastEl.textContent=t; toastEl.hidden=false; clearTimeout(tt); tt=setTimeout(()=>toastEl.hidden=true,3500); }
+const LocCtl=L.Control.extend({options:{position:"topright"},onAdd(){
+  const b=L.DomUtil.create("button","locbtn"); b.type="button"; b.title="現在地を表示"; b.setAttribute("aria-label","現在地を表示");
+  b.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+  L.DomEvent.disableClickPropagation(b);
+  b.onclick=()=>{ if(me){ panTo([me.lat,me.lng],Math.max(map.getZoom(),16)); return; } startLocate(); };
+  this.btn=b; return b; }});
+const loc=new LocCtl(); map.addControl(loc);
+function startLocate(){
+  if(!("geolocation" in navigator)){ toast("このブラウザは位置情報に対応していません"); return; }
+  if(watching) return; watching=true; loc.btn.classList.add("busy"); firstFix=true;
+  map.locate({watch:true,enableHighAccuracy:true,setView:false,maximumAge:10000,timeout:20000});
+}
+map.on("locationfound",e=>{
+  me=e.latlng; loc.btn.classList.remove("busy"); loc.btn.classList.add("on");
+  if(!meMarker){ meCircle=L.circle(me,{radius:e.accuracy,color:"#1a73e8",weight:1,opacity:.4,fillOpacity:.12,interactive:false}).addTo(map);
+    meMarker=L.marker(me,{icon:L.divIcon({className:"",html:'<div class="me"></div>',iconSize:[16,16],iconAnchor:[8,8]}),zIndexOffset:2000,interactive:false}).addTo(map); }
+  else { meMarker.setLatLng(me); meCircle.setLatLng(me).setRadius(e.accuracy); }
+  if(firstFix){ firstFix=false; panTo([me.lat,me.lng],Math.max(map.getZoom(),15)); }
+  if(!st.sel) renderList();
+});
+map.on("locationerror",e=>{
+  watching=false; loc.btn.classList.remove("busy");
+  toast(e.code===1? "位置情報の利用が許可されていません。ブラウザの設定で許可してください" : "現在地を取得できませんでした");
+});
+function distM(v){ return me? map.distance(me,[v.lat,v.lng]) : null; }
+function fmtDist(m){ const min=Math.max(1,Math.round(m/80)); return (m<1000? Math.round(m/10)*10+"m" : (m/1000).toFixed(1)+"km")+" · 徒歩"+min+"分"; }
+function panTo(ll,z){
+  if(!wide()){ const p=map.project(ll,z); const h=sheet.getBoundingClientRect().height; map.flyTo(map.unproject(p.add([0,h/2]),z),z,{duration:.5}); }
+  else map.flyTo(ll,z,{duration:.5});
+}
+
+// ---- sheet
+const sheet=document.getElementById("sheet"), scroller=document.getElementById("scroll");
+const wide=()=>matchMedia("(min-width:960px)").matches;
+document.getElementById("grab").onclick=()=>{ const s=sheet.dataset.size; sheet.dataset.size = s==="peek"?"half": s==="half"?"full":"peek"; setTimeout(()=>map.invalidateSize(),260); };
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderList(){
+  let rows=V.map(v=>[v,visible(v)]).filter(([,x])=>x.length);
+  if(me) rows=rows.slice().sort((a,b)=>distM(a[0])-distM(b[0]));
+  const n=rows.reduce((a,[,x])=>a+x.length,0);
+  document.getElementById("sh-title").textContent = (st.day===""? "会場一覧" : `${fmt(DAYS[+st.day])} に開いている会場`) + (me?"（近い順）":"");
+  document.getElementById("sh-count").textContent = `${rows.length}会場 · ${n}展示`;
+  if(!rows.length){ scroller.innerHTML=`<p class="empty">条件に合う展示がありません。エリア・日付・ジャンルの絞り込みをゆるめてください。</p>`; return; }
+  scroller.innerHTML = `<ul class="vlist">`+rows.map(([v,x])=>`<li><button class="vitem" data-k="${esc(v.k)}" style="--c:${v.k==="KK"?"var(--kk)":cvar(v.area)}">
+    <span class="dot"></span><span class="nm">${esc(v.name)}</span><span class="n">${x.length}</span>
+    <span class="sub">${me?`<span class="dist">${fmtDist(distM(v))}</span> · `:""}${esc(v.area)} · ${esc(x.map(e=>e.t).slice(0,3).join(" ／ "))}${x.length>3?" ほか":""}</span></button></li>`).join("")+`</ul>`;
+}
+scroller.addEventListener("click",e=>{
+  const b=e.target.closest(".vitem"); if(b){ select(b.dataset.k,true); return; }
+  if(e.target.closest(".back")){ st.sel=null; render(); }
+});
+
+function renderDetail(v){
+  const vis=new Set(visible(v).map(e=>e.id));
+  const list=v.ex.filter(exMatch);
+  const gq=encodeURIComponent(v.k==="KK"?"東京交通会館":v.addr.replace(/（.*?）/g,"").split(" ")[0]);
+  const color=v.k==="KK"?"var(--kk)":cvar(v.area);
+  document.getElementById("sh-title").textContent="会場の詳細";
+  document.getElementById("sh-count").textContent=`${list.length}展示`;
+  scroller.innerHTML=`<div class="detail" style="--c:${color}">
+    <button class="back">← 一覧に戻る</button>
+    <div class="dhead"><span class="eyebrow">${esc(v.area)}エリア</span><h3>${esc(v.name)}</h3><div class="addr">${esc(v.addr)}</div></div>
+    <div class="links"><a class="btn solid" href="https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}&travelmode=walking" target="_blank" rel="noopener">Googleマップで経路</a>
+    ${v.k==="KK"?`<a class="btn" href="https://artsticker.app/events/155300" target="_blank" rel="noopener">チケット（ArtSticker）</a>`:""}</div>
+    ${v.k==="KK"?`<p class="note">会期は 10.30–11.3 の5日間のみ。10:00–19:00（10/30は12:00から、11/3は17:00まで）。有料：1日券 前売3,000円／当日3,500円、学生 前売1,000円／当日1,500円。入口は東京交通会館のとなり。地図上の線はおおよその位置です。</p>`:""}
+    <div class="exs">${list.map(e=>`<article class="ex ${vis.has(e.id)?"":"off"}">
+      <h4>${esc(e.t)}</h4>
+      ${e.c?`<div class="cr">${esc(e.c)}</div>`:""}
+      <dl class="meta"><dt>DATES</dt><dd>${esc(e.d)}</dd><dt>HOURS</dt><dd>${esc(e.h)}</dd>${e.v!==v.name&&v.k!=="KK"?`<dt>VENUE</dt><dd>${esc(e.v)}</dd>`:""}</dl>
+      <div class="tags">${e.g.map(g=>`<span class="tag ${g==="UNDER30"?"u30":""}">${g}</span>`).join("")}</div>
+      ${vis.has(e.id)?"":`<span class="closed">選択した日は会期外です</span>`}
+      <a class="more" href="${BASE}${e.id}/" target="_blank" rel="noopener">公式ページで詳しく見る →</a>
+    </article>`).join("")}</div>
+  </div>`;
+  scroller.scrollTop=0;
+}
+
+function select(k,fromList){
+  st.sel=k; const v=V.find(x=>x.k===k);
+  if(!wide() && sheet.dataset.size==="peek") sheet.dataset.size="half";
+  const z=Math.max(map.getZoom(), k==="KK"?16:16);
+  if(!wide()){
+    // keep the pin above the sheet
+    const p=map.project([v.lat,v.lng],z); const h=sheet.getBoundingClientRect().height;
+    map.flyTo(map.unproject(p.add([0,h/2]),z),z,{duration:.5});
+  } else map.flyTo([v.lat,v.lng],z,{duration:.5});
+  render();
+}
+
+function render(fit){
+  paintMarkers(); updateBadge();
+  if(st.sel){ renderDetail(V.find(x=>x.k===st.sel)); } else renderList();
+  if(fit && st.areas.size){
+    const pts=V.filter(v=>st.areas.has(v.area)).map(v=>[v.lat,v.lng]);
+    if(pts.length) map.flyToBounds(pts,{padding:[40,40],maxZoom:16,paddingBottomRight:[0, wide()?0:sheet.getBoundingClientRect().height]});
+  }
+}
+map.whenReady(()=>{
+  const pts=V.map(v=>[v.lat,v.lng]);
+  map.fitBounds(pts,{paddingTopLeft:[20,20],paddingBottomRight:[20, wide()?20:sheet.getBoundingClientRect().height+10]});
+  render();
+});
+map.on("zoomend moveend",paintMarkers);
+map.on("click",()=>setOpen(false));
+sheet.addEventListener("pointerdown",()=>{ if(!wide()) setOpen(false); });
+addEventListener("resize",()=>map.invalidateSize());
+new MutationObserver(()=>{ kkLine.setStyle({color:getComputedStyle(document.documentElement).getPropertyValue("--kk").trim()}); }).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+</script>
+
+</body>
+</html>
